@@ -1,4 +1,5 @@
 // src/components/attendee-list.tsx
+import { useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -6,9 +7,77 @@ import {
   ChevronsRight,
   MoreHorizontal,
   Search,
+  Check,
 } from "lucide-react";
 
+interface CheckboxProps {
+  checked?: boolean;
+  onChange?: (checked: boolean) => void;
+  className?: string;
+}
+
+function Checkbox({
+  checked = false,
+  onChange,
+  className = "",
+}: CheckboxProps) {
+  return (
+    <div className={`relative ${className}`}>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange?.(e.target.checked)}
+        className="peer sr-only"
+      />
+      <div
+        className="
+          h-4 w-4 
+          rounded-sm 
+          border border-gray-300
+          bg-white
+          cursor-pointer
+          transition-all
+          duration-200
+          peer-checked:bg-blue-600 
+          peer-checked:border-blue-600
+          peer-focus:ring-2 
+          peer-focus:ring-blue-500/20
+          peer-focus:ring-offset-2
+          hover:border-gray-400
+          peer-checked:hover:bg-blue-700
+          peer-checked:hover:border-blue-700
+          flex items-center justify-center
+        "
+        onClick={() => onChange?.(!checked)}
+      >
+        {checked && <Check className="h-3 w-3 text-white stroke-[3]" />}
+      </div>
+    </div>
+  );
+}
+
 export function AttendeeList() {
+  const [selectAll, setSelectAll] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<number[]>([]);
+
+  const handleSelectAll = (checked: boolean) => {
+    setSelectAll(checked);
+    if (checked) {
+      setSelectedItems(Array.from({ length: 8 }, (_, i) => i));
+    } else {
+      setSelectedItems([]);
+    }
+  };
+
+  const handleSelectItem = (index: number, checked: boolean) => {
+    if (checked) {
+      setSelectedItems((prev) => [...prev, index]);
+    } else {
+      setSelectedItems((prev) => prev.filter((i) => i !== index));
+      setSelectAll(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-3 items-center">
@@ -55,7 +124,7 @@ export function AttendeeList() {
                 style={{ width: 48 }}
                 className="py-3 px-4 text-sm font-semibold text-left"
               >
-                <input type="checkbox" />
+                <Checkbox checked={selectAll} onChange={handleSelectAll} />
               </th>
               <th className="py-3 px-4 text-sm font-semibold text-left">
                 Código
@@ -66,7 +135,7 @@ export function AttendeeList() {
               <th className="py-3 px-4 text-sm font-semibold text-left">
                 Data de inscrição
               </th>
-              <th className="py-3 px-4text-sm font-semibold text-left">
+              <th className="py-3 px-4 text-sm font-semibold text-left">
                 Data do check-in
               </th>
               <th
@@ -85,7 +154,10 @@ export function AttendeeList() {
                     "
               >
                 <td className="px-4 py-3 text-sm text-muted-foreground">
-                  <input type="checkbox" className="h-4 w-4 text-primary" />
+                  <Checkbox
+                    checked={selectedItems.includes(idx)}
+                    onChange={(checked) => handleSelectItem(idx, checked)}
+                  />
                 </td>
                 <td className="px-4 py-3 text-sm text-foreground">12345</td>
                 <td className="px-4 py-3">
@@ -105,7 +177,7 @@ export function AttendeeList() {
                   3 dias atrás
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <button className="bg-gray-200/10 border border-gray-200 rounded-md p-1.5">
+                  <button className="bg-gray-200/10 border border-gray-200 rounded-md p-1.5 hover:bg-gray-200/20 transition-colors">
                     <MoreHorizontal className="h-4 w-4 text-gray-900/30" />
                   </button>
                 </td>
@@ -125,16 +197,16 @@ export function AttendeeList() {
                   <span>Página 1 de 24</span>
 
                   <div className="flex gap-1.5">
-                    <button className="bg-gray-600/10 border border-gray-200 rounded-md p-1.5">
+                    <button className="bg-gray-600/10 border border-gray-200 rounded-md p-1.5 hover:bg-gray-600/20 transition-colors">
                       <ChevronsLeft className="h-4 w-4 text-gray-900/30" />
                     </button>
-                    <button className="bg-gray-600/10 border border-gray-200 rounded-md p-1.5">
+                    <button className="bg-gray-600/10 border border-gray-200 rounded-md p-1.5 hover:bg-gray-600/20 transition-colors">
                       <ChevronLeft className="h-4 w-4 text-gray-900/30" />
                     </button>
-                    <button className="bg-gray-300/10 border border-gray-200 rounded-md p-1.5">
+                    <button className="bg-gray-300/10 border border-gray-200 rounded-md p-1.5 hover:bg-gray-300/20 transition-colors">
                       <ChevronRight className="h-4 w-4 text-gray-900/30" />
                     </button>
-                    <button className="bg-gray-300/10 border border-gray-200 rounded-md p-1.5">
+                    <button className="bg-gray-300/10 border border-gray-200 rounded-md p-1.5 hover:bg-gray-300/20 transition-colors">
                       <ChevronsRight className="h-4 w-4 text-gray-900/30" />
                     </button>
                   </div>
