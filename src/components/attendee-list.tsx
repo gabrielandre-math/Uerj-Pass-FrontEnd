@@ -151,6 +151,7 @@ export function AttendeeList() {
                 className="
                     hover:bg-muted/10
                     transition-colors
+                    hover:bg-gray-100/10
                     "
               >
                 <td className="px-4 py-3 text-sm text-muted-foreground">
