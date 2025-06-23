@@ -9,6 +9,14 @@ import {
   Search,
 } from "lucide-react";
 import { Checkbox } from "./check-box";
+import { IconButton } from "./icon-button";
+import { Table } from "./table/table";
+import { TableHeader } from "./table/table-header";
+import { TableRow } from "./table/table-row";
+import { TableBody } from "./table/table-body";
+import { TableDivisor } from "./table/table-divisor";
+import { Container } from "./table/container";
+import { Span } from "./table/span";
 
 export function AttendeeList() {
   const [selectAll, setSelectAll] = useState(false);
@@ -56,7 +64,6 @@ export function AttendeeList() {
         "
         >
           <Search className="h-5 w-5 text-gray-400 group-focus-within:text-gray-600" />
-
           <input
             type="text"
             className="
@@ -70,107 +77,77 @@ export function AttendeeList() {
           />
         </div>
       </div>
-      <div className="border border-gray-200/50 rounded-lg">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-200/50">
-              <th
-                style={{ width: 48 }}
-                className="py-3 px-4 text-sm font-semibold text-left"
-              >
-                <Checkbox checked={selectAll} onChange={handleSelectAll} />
-              </th>
-              <th className="py-3 px-4 text-sm font-semibold text-left">
-                Código
-              </th>
-              <th className="py-3 px-4 text-sm font-semibold text-left">
-                Participante
-              </th>
-              <th className="py-3 px-4 text-sm font-semibold text-left">
-                Data de inscrição
-              </th>
-              <th className="py-3 px-4 text-sm font-semibold text-left">
-                Data do check-in
-              </th>
-              <th
-                style={{ width: 64 }}
-                className="py-3 px-4 text-sm font-semibold text-left"
-              ></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200/50">
-            {Array.from({ length: 8 }).map((_, idx) => (
-              <tr
-                key={idx}
-                className="
-                    hover:bg-muted/10
-                    transition-colors
-                    hover:bg-gray-100/10
-                    "
-              >
-                <td className="px-4 py-3 text-sm text-muted-foreground">
-                  <Checkbox
-                    checked={selectedItems.includes(idx)}
-                    onChange={(checked) => handleSelectItem(idx, checked)}
-                  />
-                </td>
-                <td className="px-4 py-3 text-sm text-foreground">12345</td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm font-semibold text-foreground">
-                      Gabriel André
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      gabrieldevpyc@gmail.com
-                    </span>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-sm text-foreground">
-                  7 dias atrás
-                </td>
-                <td className="px-4 py-3 text-sm text-foreground">
-                  3 dias atrás
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <button className="bg-gray-200/10 border border-gray-200 rounded-md p-1.5 hover:bg-gray-200/20 transition-colors">
-                    <MoreHorizontal className="h-4 w-4 text-gray-900/30" />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td className="py-3 px-4 text-sm text-gray-700" colSpan={3}>
-                Mostrando 10 de 228 itens
-              </td>
-              <td
-                className="py-3 px-4 text-sm text-gray-700 text-right"
-                colSpan={3}
-              >
-                <div className="inline-flex items-center gap-8">
-                  <span>Página 1 de 24</span>
+      <Table>
+        <thead>
+          <TableRow>
+            <TableHeader style={{ width: 48 }}>
+              <Checkbox checked={selectAll} onChange={handleSelectAll} />
+            </TableHeader>
+            <TableHeader>Código</TableHeader>
+            <TableHeader>Participante</TableHeader>
+            <TableHeader>Data de inscrição</TableHeader>
+            <TableHeader>Data do check-in</TableHeader>
+            <TableHeader style={{ width: 64 }}></TableHeader>
+          </TableRow>
+        </thead>
+        <TableBody>
+          {Array.from({ length: 8 }).map((_, idx) => (
+            <TableRow key={idx} variant>
+              <TableDivisor>
+                <Checkbox
+                  checked={selectedItems.includes(idx)}
+                  onChange={(checked) => handleSelectItem(idx, checked)}
+                />
+              </TableDivisor>
 
-                  <div className="flex gap-1.5">
-                    <button className="bg-gray-600/10 border border-gray-200 rounded-md p-1.5 hover:bg-gray-600/20 transition-colors">
-                      <ChevronsLeft className="h-4 w-4 text-gray-900/30" />
-                    </button>
-                    <button className="bg-gray-600/10 border border-gray-200 rounded-md p-1.5 hover:bg-gray-600/20 transition-colors">
-                      <ChevronLeft className="h-4 w-4 text-gray-900/30" />
-                    </button>
-                    <button className="bg-gray-300/10 border border-gray-200 rounded-md p-1.5 hover:bg-gray-300/20 transition-colors">
-                      <ChevronRight className="h-4 w-4 text-gray-900/30" />
-                    </button>
-                    <button className="bg-gray-300/10 border border-gray-200 rounded-md p-1.5 hover:bg-gray-300/20 transition-colors">
-                      <ChevronsRight className="h-4 w-4 text-gray-900/30" />
-                    </button>
-                  </div>
+              <TableDivisor>12345</TableDivisor>
+
+              <TableDivisor variant>
+                <Container>
+                  <Span>Gabriel André</Span>
+                  <Span variant> gabrieldevpyc@gmail.com</Span>
+                </Container>
+              </TableDivisor>
+
+              <TableDivisor>7 dias atrás</TableDivisor>
+              <TableDivisor>3 dias atrás</TableDivisor>
+              <TableDivisor variant className="text-right">
+                <IconButton transparent>
+                  <MoreHorizontal className="h-4 w-4 text-gray-900/30" />
+                </IconButton>
+              </TableDivisor>
+            </TableRow>
+          ))}
+        </TableBody>
+        <tfoot>
+          <tr>
+            <TableDivisor className="text-sm text-gray-700" colSpan={3}>
+              Mostrando 10 de 228 itens
+            </TableDivisor>
+
+            <TableDivisor className=" text-gray-700 text-right" colSpan={3}>
+              <div className="inline-flex items-center gap-8">
+                <span>Página 1 de 24</span>
+
+                <div className="flex gap-1.5">
+                  <IconButton>
+                    <ChevronsLeft className="h-4 w-4 text-gray-900/30" />
+                  </IconButton>
+                  <IconButton>
+                    <ChevronLeft className="h-4 w-4 text-gray-900/30" />
+                  </IconButton>
+                  <IconButton>
+                    <ChevronRight className="h-4 w-4 text-gray-900/30" />
+                  </IconButton>
+                  <IconButton>
+                    <ChevronsRight className="h-4 w-4 text-gray-900/30" />
+                  </IconButton>
                 </div>
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+              </div>
+            </TableDivisor>
+          </tr>
+        </tfoot>
+      </Table>
     </div>
   );
 }
