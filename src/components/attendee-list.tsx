@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -16,7 +16,7 @@ import { TableBody } from "./table/table-body";
 import { TableDivisor } from "./table/table-divisor";
 import { Container } from "./table/container";
 import { Span } from "./table/span";
-import { attendees } from "../data/attendees";
+
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/pt-br";
@@ -24,10 +24,46 @@ import "dayjs/locale/pt-br";
 dayjs.extend(relativeTime);
 dayjs.locale("pt-br");
 
+interface Attendee {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  checkedInAt: string | null;
+}
+
 export function AttendeeList() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [attendees, setAttendees] = useState<Attendee[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+
+    fetch(
+      "http://localhost:3333/events/9e9bd979-9d10-4915-b339-3786b1634f33/attendees"
+    )
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch attendees");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setAttendees(data.attendees || []);
+      })
+      .catch((error) => {
+        setError(error.message);
+        console.error("Error fetching attendees:", error);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
 
   const itemsPerPage = 10;
 
@@ -55,7 +91,7 @@ export function AttendeeList() {
     setPage(page + 1);
   }
 
-  function goToPreviusPage() {
+  function goToPreviousPage() {
     setPage(page - 1);
   }
 
@@ -83,7 +119,7 @@ export function AttendeeList() {
     setSelectedItems(newSelectedItems);
   };
 
-  const handleSelectItem = (attendeeId: number, checked: boolean) => {
+  const handleSelectItem = (attendeeId: string, checked: boolean) => {
     const newSelectedItems = new Set(selectedItems);
 
     if (checked) {
@@ -105,6 +141,38 @@ export function AttendeeList() {
   const isIndeterminate =
     currentPageSelectedCount > 0 &&
     currentPageSelectedCount < currentPageData.length;
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex gap-3 items-center">
+          <h1 className="text-2xl font-semibold text-foreground tracking-tight leading-tight">
+            Participantes
+          </h1>
+        </div>
+        <div className="flex items-center justify-center py-8">
+          <p className="text-gray-500">Carregando participantes...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex gap-3 items-center">
+          <h1 className="text-2xl font-semibold text-foreground tracking-tight leading-tight">
+            Participantes
+          </h1>
+        </div>
+        <div className="flex items-center justify-center py-8">
+          <p className="text-red-500">
+            Erro ao carregar participantes: {error}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -182,8 +250,12 @@ export function AttendeeList() {
                 </Container>
               </TableDivisor>
 
-              <TableDivisor>{dayjs().to(attendee.createdAt)}</TableDivisor>
-              <TableDivisor>{dayjs().to(attendee.checkedInAt)}</TableDivisor>
+              <TableDivisor>{dayjs(attendee.createdAt).fromNow()}</TableDivisor>
+              <TableDivisor>
+                {attendee.checkedInAt
+                  ? dayjs(attendee.checkedInAt).fromNow()
+                  : "-"}
+              </TableDivisor>
               <TableDivisor variant className="text-right">
                 <IconButton transparent>
                   <MoreHorizontal className="h-4 w-4 text-gray-900/30" />
@@ -210,7 +282,7 @@ export function AttendeeList() {
                   <IconButton onClick={goToFirstPage} disabled={page === 1}>
                     <ChevronsLeft className="h-4 w-4 text-gray-900/30" />
                   </IconButton>
-                  <IconButton onClick={goToPreviusPage} disabled={page === 1}>
+                  <IconButton onClick={goToPreviousPage} disabled={page === 1}>
                     <ChevronLeft className="h-4 w-4 text-gray-900/30" />
                   </IconButton>
                   <IconButton
