@@ -1,5 +1,4 @@
-// src/components/attendee-list.tsx
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -17,28 +16,42 @@ import { TableBody } from "./table/table-body";
 import { TableDivisor } from "./table/table-divisor";
 import { Container } from "./table/container";
 import { Span } from "./table/span";
+import { attendees } from "../data/attendees";
 
 export function AttendeeList() {
-  const [selectAll, setSelectAll] = useState(false);
-  const [selectedItems, setSelectedItems] = useState<number[]>([]);
+  const [search, setSearch] = useState();
+
+  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
+
+  function onSearchInputChanged(event: ChangeEvent<HTMLInputElement>) {
+    setSearch(event.target.value);
+  }
 
   const handleSelectAll = (checked: boolean) => {
-    setSelectAll(checked);
     if (checked) {
-      setSelectedItems(Array.from({ length: 8 }, (_, i) => i));
+      const allIds = new Set(attendees.map((attendee) => attendee.id));
+      setSelectedItems(allIds);
     } else {
-      setSelectedItems([]);
+      setSelectedItems(new Set());
     }
   };
 
-  const handleSelectItem = (index: number, checked: boolean) => {
+  const handleSelectItem = (attendeeId: number, checked: boolean) => {
+    const newSelectedItems = new Set(selectedItems);
+
     if (checked) {
-      setSelectedItems((prev) => [...prev, index]);
+      newSelectedItems.add(attendeeId);
     } else {
-      setSelectedItems((prev) => prev.filter((i) => i !== index));
-      setSelectAll(false);
+      newSelectedItems.delete(attendeeId);
     }
+
+    setSelectedItems(newSelectedItems);
   };
+
+  const selectAll =
+    selectedItems.size === attendees.length && attendees.length > 0;
+  const isIndeterminate =
+    selectedItems.size > 0 && selectedItems.size < attendees.length;
 
   return (
     <div className="flex flex-col gap-4">
@@ -74,14 +87,21 @@ export function AttendeeList() {
             placeholder:text-gray-400     
           "
             placeholder="Buscar participante..."
+            onChange={onSearchInputChanged}
           />
         </div>
+        {search}
       </div>
+
       <Table>
         <thead>
           <TableRow>
             <TableHeader style={{ width: 48 }}>
-              <Checkbox checked={selectAll} onChange={handleSelectAll} />
+              <Checkbox
+                checked={selectAll}
+                indeterminate={isIndeterminate}
+                onChange={handleSelectAll}
+              />
             </TableHeader>
             <TableHeader>Código</TableHeader>
             <TableHeader>Participante</TableHeader>
@@ -91,26 +111,26 @@ export function AttendeeList() {
           </TableRow>
         </thead>
         <TableBody>
-          {Array.from({ length: 8 }).map((_, idx) => (
-            <TableRow key={idx} variant>
+          {attendees.map((attendee) => (
+            <TableRow key={attendee.id} variant>
               <TableDivisor>
                 <Checkbox
-                  checked={selectedItems.includes(idx)}
-                  onChange={(checked) => handleSelectItem(idx, checked)}
+                  checked={selectedItems.has(attendee.id)}
+                  onChange={(checked) => handleSelectItem(attendee.id, checked)}
                 />
               </TableDivisor>
 
-              <TableDivisor>12345</TableDivisor>
+              <TableDivisor>{attendee.id}</TableDivisor>
 
               <TableDivisor variant>
                 <Container>
-                  <Span>Gabriel André</Span>
-                  <Span variant> gabrieldevpyc@gmail.com</Span>
+                  <Span>{attendee.name}</Span>
+                  <Span variant> {attendee.email}</Span>
                 </Container>
               </TableDivisor>
 
-              <TableDivisor>7 dias atrás</TableDivisor>
-              <TableDivisor>3 dias atrás</TableDivisor>
+              <TableDivisor>{attendee.createdAt.toISOString()}</TableDivisor>
+              <TableDivisor>{attendee.checkedInAt.toISOString()}</TableDivisor>
               <TableDivisor variant className="text-right">
                 <IconButton transparent>
                   <MoreHorizontal className="h-4 w-4 text-gray-900/30" />
@@ -122,7 +142,8 @@ export function AttendeeList() {
         <tfoot>
           <tr>
             <TableDivisor className="text-sm text-gray-700" colSpan={3}>
-              Mostrando 10 de 228 itens
+              Mostrando 10 de 228 itens{" "}
+              {selectedItems.size > 0 && `(${selectedItems.size} selecionados)`}
             </TableDivisor>
 
             <TableDivisor className=" text-gray-700 text-right" colSpan={3}>
