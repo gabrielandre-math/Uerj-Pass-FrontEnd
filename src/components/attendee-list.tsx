@@ -45,9 +45,6 @@ export function AttendeeList() {
     (page - 1) * itemsPerPage,
     page * itemsPerPage
   );
-  const currentPageIds = new Set(
-    currentPageData.map((attendee) => attendee.id)
-  );
 
   function onSearchInputChanged(event: ChangeEvent<HTMLInputElement>) {
     setSearch(event.target.value);
