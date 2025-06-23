@@ -1,5 +1,6 @@
 // src/components/header.tsx
 import logo from "../assets/uerj-pass-logo.svg";
+import { NavLink } from "./nav-link";
 
 export function Header() {
   return (
@@ -22,28 +23,8 @@ export function Header() {
       </div>
 
       <nav className="flex items-center gap-5 text-sm">
-        <a
-          href="#"
-          className="
-            font-medium
-            text-foreground         
-            hover:text-primary     
-            transition
-            "
-        >
-          Eventos
-        </a>
-        <a
-          href="#"
-          className="
-            font-medium
-            text-muted-foreground    
-            hover:text-foreground    
-            transition
-            "
-        >
-          Participantes
-        </a>
+        <NavLink href={"/eventos"}>Eventos</NavLink>
+        <NavLink href={"/participantes"}>Participantes</NavLink>
       </nav>
     </div>
   );
