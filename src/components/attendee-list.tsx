@@ -32,86 +32,118 @@ interface Attendee {
   checkedInAt: string | null;
 }
 
+interface PaginationInfo {
+  pageIndex: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+interface ApiResponse {
+  attendees: Attendee[];
+  pagination: PaginationInfo;
+}
+
 export function AttendeeList() {
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(0);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [attendees, setAttendees] = useState<Attendee[]>([]);
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    pageIndex: 0,
+    limit: 10,
+    total: 0,
+    totalPages: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [searchDebounced, setSearchDebounced] = useState("");
+
   useEffect(() => {
+    const timeout = setTimeout(() => {
+      setSearchDebounced(search);
+      setPage(0);
+    }, 500);
+
+    return () => clearTimeout(timeout);
+  }, [search]);
+
+  useEffect(() => {
+    fetchAttendees();
+  }, [page, searchDebounced]);
+
+  const fetchAttendees = async () => {
     setLoading(true);
     setError(null);
 
-    fetch(
-      "http://localhost:3333/events/9e9bd979-9d10-4915-b339-3786b1634f33/attendees"
-    )
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to fetch attendees");
-        }
-        return response.json();
-      })
-      .then((data) => {
-        setAttendees(data.attendees || []);
-      })
-      .catch((error) => {
-        setError(error.message);
-        console.error("Error fetching attendees:", error);
-      })
-      .finally(() => {
-        setLoading(false);
+    try {
+      const queryParams = new URLSearchParams({
+        pageIndex: page.toString(),
+        limit: "10",
       });
-  }, []);
 
-  const itemsPerPage = 10;
+      if (searchDebounced) {
+        queryParams.set("query", searchDebounced);
+      }
 
-  const filteredAttendees = search
-    ? attendees.filter(
-        (attendee) =>
-          attendee.name.toLowerCase().includes(search.toLowerCase()) ||
-          attendee.email.toLowerCase().includes(search.toLowerCase())
-      )
-    : attendees;
+      const response = await fetch(
+        `http://localhost:3333/events/9e9bd979-9d10-4915-b339-3786b1634f33/attendees?${queryParams}`
+      );
 
-  const totalPages = Math.ceil(filteredAttendees.length / itemsPerPage);
+      if (!response.ok) {
+        throw new Error("Failed to fetch attendees");
+      }
 
-  const currentPageData = filteredAttendees.slice(
-    (page - 1) * itemsPerPage,
-    page * itemsPerPage
-  );
+      const data: ApiResponse = await response.json();
+
+      console.log("🔍 DADOS DA API:", data);
+      console.log("ATTENDEES:", data.attendees?.length || 0, "participantes");
+      console.log("PAGINAÇÃO:", data.pagination);
+
+      setAttendees(data.attendees || []);
+      setPagination(data.pagination);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Erro desconhecido");
+      console.error("Error fetching attendees:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   function onSearchInputChanged(event: ChangeEvent<HTMLInputElement>) {
     setSearch(event.target.value);
-    setPage(1);
   }
 
   function goToNextPage() {
-    setPage(page + 1);
+    if (page < pagination.totalPages - 1) {
+      setPage(page + 1);
+    }
   }
 
   function goToPreviousPage() {
-    setPage(page - 1);
+    if (page > 0) {
+      setPage(page - 1);
+    }
   }
 
   function goToFirstPage() {
-    setPage(1);
+    setPage(0);
   }
 
   function goToLastPage() {
-    setPage(totalPages);
+    setPage(pagination.totalPages - 1);
   }
 
   const handleSelectAll = (checked: boolean) => {
     const newSelectedItems = new Set(selectedItems);
 
     if (checked) {
-      currentPageData.forEach((attendee) => {
+      attendees.forEach((attendee) => {
         newSelectedItems.add(attendee.id);
       });
     } else {
-      currentPageData.forEach((attendee) => {
+      attendees.forEach((attendee) => {
         newSelectedItems.delete(attendee.id);
       });
     }
@@ -131,16 +163,14 @@ export function AttendeeList() {
     setSelectedItems(newSelectedItems);
   };
 
-  const currentPageSelectedCount = currentPageData.filter((attendee) =>
+  const currentPageSelectedCount = attendees.filter((attendee) =>
     selectedItems.has(attendee.id)
   ).length;
 
   const selectAll =
-    currentPageSelectedCount === currentPageData.length &&
-    currentPageData.length > 0;
+    currentPageSelectedCount === attendees.length && attendees.length > 0;
   const isIndeterminate =
-    currentPageSelectedCount > 0 &&
-    currentPageSelectedCount < currentPageData.length;
+    currentPageSelectedCount > 0 && currentPageSelectedCount < attendees.length;
 
   if (loading) {
     return (
@@ -232,7 +262,7 @@ export function AttendeeList() {
           </TableRow>
         </thead>
         <TableBody>
-          {currentPageData.map((attendee) => (
+          {attendees.map((attendee) => (
             <TableRow key={attendee.id} variant>
               <TableDivisor>
                 <Checkbox
@@ -252,9 +282,11 @@ export function AttendeeList() {
 
               <TableDivisor>{dayjs(attendee.createdAt).fromNow()}</TableDivisor>
               <TableDivisor>
-                {attendee.checkedInAt
-                  ? dayjs(attendee.checkedInAt).fromNow()
-                  : "-"}
+                {attendee.checkedInAt ? (
+                  dayjs(attendee.checkedInAt).fromNow()
+                ) : (
+                  <span className="text-zinc-400">Não fez check-in</span>
+                )}
               </TableDivisor>
               <TableDivisor variant className="text-right">
                 <IconButton transparent>
@@ -267,33 +299,32 @@ export function AttendeeList() {
         <tfoot>
           <tr>
             <TableDivisor className="text-sm text-gray-700" colSpan={3}>
-              Mostrando {currentPageData.length} de {filteredAttendees.length}{" "}
-              itens{" "}
+              Mostrando {attendees.length} de {pagination.total} itens{" "}
               {selectedItems.size > 0 && `(${selectedItems.size} selecionados)`}
             </TableDivisor>
 
-            <TableDivisor className=" text-gray-700 text-right" colSpan={3}>
+            <TableDivisor className="text-gray-700 text-right" colSpan={3}>
               <div className="inline-flex items-center gap-8">
                 <span>
-                  Página {page} de {totalPages}
+                  Página {page + 1} de {pagination.totalPages}
                 </span>
 
                 <div className="flex gap-1.5">
-                  <IconButton onClick={goToFirstPage} disabled={page === 1}>
+                  <IconButton onClick={goToFirstPage} disabled={page === 0}>
                     <ChevronsLeft className="h-4 w-4 text-gray-900/30" />
                   </IconButton>
-                  <IconButton onClick={goToPreviousPage} disabled={page === 1}>
+                  <IconButton onClick={goToPreviousPage} disabled={page === 0}>
                     <ChevronLeft className="h-4 w-4 text-gray-900/30" />
                   </IconButton>
                   <IconButton
                     onClick={goToNextPage}
-                    disabled={page === totalPages}
+                    disabled={page >= pagination.totalPages - 1}
                   >
                     <ChevronRight className="h-4 w-4 text-gray-900/30" />
                   </IconButton>
                   <IconButton
                     onClick={goToLastPage}
-                    disabled={page === totalPages}
+                    disabled={page >= pagination.totalPages - 1}
                   >
                     <ChevronsRight className="h-4 w-4 text-gray-900/30" />
                   </IconButton>
