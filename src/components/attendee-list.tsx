@@ -1,4 +1,10 @@
-import { useEffect, useState, type ChangeEvent } from "react";
+import {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  type ChangeEvent,
+} from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -25,7 +31,7 @@ dayjs.extend(relativeTime);
 dayjs.locale("pt-br");
 
 interface Attendee {
-  id: string;
+  id: number;
   name: string;
   email: string;
   createdAt: string;
@@ -47,7 +53,7 @@ interface ApiResponse {
 export function AttendeeList() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo>({
     pageIndex: 0,
@@ -60,6 +66,51 @@ export function AttendeeList() {
 
   const [searchDebounced, setSearchDebounced] = useState("");
 
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [shouldMaintainFocus, setShouldMaintainFocus] = useState(false);
+
+  const fetchAttendees = useCallback(async () => {
+    if (attendees.length === 0) {
+      setLoading(true);
+    }
+    setError(null);
+
+    try {
+      const queryParams = new URLSearchParams({
+        pageIndex: page.toString(),
+        limit: "10",
+      });
+
+      if (searchDebounced.trim()) {
+        queryParams.set("query", searchDebounced.trim());
+      }
+
+      const response = await fetch(
+        `http://localhost:3333/events/9e9bd979-9d10-4915-b339-3786b1634f33/attendees?${queryParams}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch attendees: ${response.status}`);
+      }
+
+      const data: ApiResponse = await response.json();
+
+      console.log("🔍 DADOS DA API:", data);
+      console.log("ATTENDEES:", data.attendees?.length || 0, "participantes");
+      console.log("PAGINAÇÃO:", data.pagination);
+
+      setAttendees(data.attendees || []);
+      setPagination(data.pagination);
+
+      setSelectedItems(new Set());
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Erro desconhecido");
+      console.error("Error fetching attendees:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, searchDebounced, attendees.length]);
+
   useEffect(() => {
     const timeout = setTimeout(() => {
       setSearchDebounced(search);
@@ -71,48 +122,28 @@ export function AttendeeList() {
 
   useEffect(() => {
     fetchAttendees();
-  }, [page, searchDebounced]);
+  }, [fetchAttendees]);
 
-  const fetchAttendees = async () => {
-    setLoading(true);
-    setError(null);
+  useEffect(() => {
+    if (shouldMaintainFocus && searchInputRef.current && !loading) {
+      setTimeout(() => {
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
 
-    try {
-      const queryParams = new URLSearchParams({
-        pageIndex: page.toString(),
-        limit: "10",
-      });
-
-      if (searchDebounced) {
-        queryParams.set("query", searchDebounced);
-      }
-
-      const response = await fetch(
-        `http://localhost:3333/events/9e9bd979-9d10-4915-b339-3786b1634f33/attendees?${queryParams}`
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch attendees");
-      }
-
-      const data: ApiResponse = await response.json();
-
-      console.log("🔍 DADOS DA API:", data);
-      console.log("ATTENDEES:", data.attendees?.length || 0, "participantes");
-      console.log("PAGINAÇÃO:", data.pagination);
-
-      setAttendees(data.attendees || []);
-      setPagination(data.pagination);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "Erro desconhecido");
-      console.error("Error fetching attendees:", error);
-    } finally {
-      setLoading(false);
+          searchInputRef.current.setSelectionRange(
+            searchInputRef.current.value.length,
+            searchInputRef.current.value.length
+          );
+        }
+      }, 10);
+      setShouldMaintainFocus(false);
     }
-  };
+  }, [loading, shouldMaintainFocus]);
 
   function onSearchInputChanged(event: ChangeEvent<HTMLInputElement>) {
     setSearch(event.target.value);
+
+    setShouldMaintainFocus(true);
   }
 
   function goToNextPage() {
@@ -151,7 +182,7 @@ export function AttendeeList() {
     setSelectedItems(newSelectedItems);
   };
 
-  const handleSelectItem = (attendeeId: string, checked: boolean) => {
+  const handleSelectItem = (attendeeId: number, checked: boolean) => {
     const newSelectedItems = new Set(selectedItems);
 
     if (checked) {
@@ -229,6 +260,7 @@ export function AttendeeList() {
         >
           <Search className="h-5 w-5 text-gray-400 group-focus-within:text-gray-600" />
           <input
+            ref={searchInputRef}
             type="text"
             value={search}
             className="
