@@ -63,15 +63,16 @@ export function AttendeeList() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const [searchDebounced, setSearchDebounced] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [shouldMaintainFocus, setShouldMaintainFocus] = useState(false);
 
   const fetchAttendees = useCallback(async () => {
     if (attendees.length === 0) {
       setLoading(true);
+    } else {
+      setIsSearching(true);
     }
     setError(null);
 
@@ -95,19 +96,19 @@ export function AttendeeList() {
 
       const data: ApiResponse = await response.json();
 
-      console.log("🔍 DADOS DA API:", data);
+      console.log("DADOS DA API:", data);
       console.log("ATTENDEES:", data.attendees?.length || 0, "participantes");
       console.log("PAGINAÇÃO:", data.pagination);
 
       setAttendees(data.attendees || []);
       setPagination(data.pagination);
-
       setSelectedItems(new Set());
     } catch (error) {
       setError(error instanceof Error ? error.message : "Erro desconhecido");
       console.error("Error fetching attendees:", error);
     } finally {
       setLoading(false);
+      setIsSearching(false);
     }
   }, [page, searchDebounced, attendees.length]);
 
@@ -125,25 +126,25 @@ export function AttendeeList() {
   }, [fetchAttendees]);
 
   useEffect(() => {
-    if (shouldMaintainFocus && searchInputRef.current && !loading) {
+    if (
+      !loading &&
+      !isSearching &&
+      searchInputRef.current &&
+      search.length > 0
+    ) {
       setTimeout(() => {
         if (searchInputRef.current) {
           searchInputRef.current.focus();
 
-          searchInputRef.current.setSelectionRange(
-            searchInputRef.current.value.length,
-            searchInputRef.current.value.length
-          );
+          const inputLength = searchInputRef.current.value.length;
+          searchInputRef.current.setSelectionRange(inputLength, inputLength);
         }
       }, 10);
-      setShouldMaintainFocus(false);
     }
-  }, [loading, shouldMaintainFocus]);
+  }, [loading, isSearching, search.length]);
 
   function onSearchInputChanged(event: ChangeEvent<HTMLInputElement>) {
     setSearch(event.target.value);
-
-    setShouldMaintainFocus(true);
   }
 
   function goToNextPage() {
@@ -294,39 +295,57 @@ export function AttendeeList() {
           </TableRow>
         </thead>
         <TableBody>
-          {attendees.map((attendee) => (
-            <TableRow key={attendee.id} variant>
-              <TableDivisor>
-                <Checkbox
-                  checked={selectedItems.has(attendee.id)}
-                  onChange={(checked) => handleSelectItem(attendee.id, checked)}
-                />
-              </TableDivisor>
+          {attendees.length > 0 ? (
+            attendees.map((attendee) => (
+              <TableRow key={attendee.id} variant>
+                <TableDivisor>
+                  <Checkbox
+                    checked={selectedItems.has(attendee.id)}
+                    onChange={(checked) =>
+                      handleSelectItem(attendee.id, checked)
+                    }
+                  />
+                </TableDivisor>
 
-              <TableDivisor>{attendee.id}</TableDivisor>
+                <TableDivisor>{attendee.id}</TableDivisor>
 
-              <TableDivisor variant>
-                <Container>
-                  <Span>{attendee.name}</Span>
-                  <Span variant> {attendee.email}</Span>
-                </Container>
-              </TableDivisor>
+                <TableDivisor variant>
+                  <Container>
+                    <Span>{attendee.name}</Span>
+                    <Span variant> {attendee.email}</Span>
+                  </Container>
+                </TableDivisor>
 
-              <TableDivisor>{dayjs(attendee.createdAt).fromNow()}</TableDivisor>
-              <TableDivisor>
-                {attendee.checkedInAt ? (
-                  dayjs(attendee.checkedInAt).fromNow()
-                ) : (
-                  <span className="text-zinc-400">Não fez check-in</span>
-                )}
-              </TableDivisor>
-              <TableDivisor variant className="text-right">
-                <IconButton transparent>
-                  <MoreHorizontal className="h-4 w-4 text-gray-900/30" />
-                </IconButton>
+                <TableDivisor>
+                  {dayjs(attendee.createdAt).fromNow()}
+                </TableDivisor>
+                <TableDivisor>
+                  {attendee.checkedInAt ? (
+                    dayjs(attendee.checkedInAt).fromNow()
+                  ) : (
+                    <span className="text-zinc-400">Não fez check-in</span>
+                  )}
+                </TableDivisor>
+                <TableDivisor variant className="text-right">
+                  <IconButton transparent>
+                    <MoreHorizontal className="h-4 w-4 text-gray-900/30" />
+                  </IconButton>
+                </TableDivisor>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableDivisor colSpan={6} className="text-center py-8">
+                <span className="text-gray-500">
+                  {isSearching
+                    ? "Buscando..."
+                    : searchDebounced.trim()
+                    ? `Nenhum participante encontrado para "${searchDebounced}"`
+                    : "Nenhum participante encontrado"}
+                </span>
               </TableDivisor>
             </TableRow>
-          ))}
+          )}
         </TableBody>
         <tfoot>
           <tr>
