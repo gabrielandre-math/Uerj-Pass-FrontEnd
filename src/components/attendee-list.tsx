@@ -52,7 +52,16 @@ interface ApiResponse {
 
 export function AttendeeList() {
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => {
+    const url = new URL(window.location.toString());
+
+    if (url.searchParams.has("page")) {
+      return Math.max(1, Number(url.searchParams.get("page")) || 1);
+    }
+
+    return 1;
+  });
+
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo>({
@@ -69,7 +78,7 @@ export function AttendeeList() {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const fetchAttendees = useCallback(async () => {
-    if (attendees.length === 0) {
+    if (attendees.length === 0 && !searchDebounced.trim()) {
       setLoading(true);
     } else {
       setIsSearching(true);
@@ -78,7 +87,7 @@ export function AttendeeList() {
 
     try {
       const queryParams = new URLSearchParams({
-        pageIndex: page.toString(),
+        pageIndex: (page - 1).toString(),
         limit: "10",
       });
 
@@ -110,16 +119,19 @@ export function AttendeeList() {
       setLoading(false);
       setIsSearching(false);
     }
-  }, [page, searchDebounced, attendees.length]);
+  }, [page, searchDebounced]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
       setSearchDebounced(search);
-      setPage(0);
+
+      if (search !== searchDebounced) {
+        setCurrentPage(1);
+      }
     }, 500);
 
     return () => clearTimeout(timeout);
-  }, [search]);
+  }, [search, searchDebounced]);
 
   useEffect(() => {
     fetchAttendees();
@@ -135,7 +147,6 @@ export function AttendeeList() {
       setTimeout(() => {
         if (searchInputRef.current) {
           searchInputRef.current.focus();
-
           const inputLength = searchInputRef.current.value.length;
           searchInputRef.current.setSelectionRange(inputLength, inputLength);
         }
@@ -147,24 +158,36 @@ export function AttendeeList() {
     setSearch(event.target.value);
   }
 
+  function setCurrentPage(newPage: number) {
+    const url = new URL(window.location.toString());
+    const clampedPage = Math.max(
+      1,
+      Math.min(newPage, pagination.totalPages || 1)
+    );
+
+    url.searchParams.set("page", String(clampedPage));
+    window.history.pushState({}, "", url);
+    setPage(clampedPage);
+  }
+
   function goToNextPage() {
-    if (page < pagination.totalPages - 1) {
-      setPage(page + 1);
+    if (page < (pagination.totalPages || 1)) {
+      setCurrentPage(page + 1);
     }
   }
 
   function goToPreviousPage() {
-    if (page > 0) {
-      setPage(page - 1);
+    if (page > 1) {
+      setCurrentPage(page - 1);
     }
   }
 
   function goToFirstPage() {
-    setPage(0);
+    setCurrentPage(1);
   }
 
   function goToLastPage() {
-    setPage(pagination.totalPages - 1);
+    setCurrentPage(pagination.totalPages || 1);
   }
 
   const handleSelectAll = (checked: boolean) => {
@@ -231,6 +254,12 @@ export function AttendeeList() {
           <p className="text-red-500">
             Erro ao carregar participantes: {error}
           </p>
+          <button
+            onClick={fetchAttendees}
+            className="ml-2 px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
+          >
+            Tentar novamente
+          </button>
         </div>
       </div>
     );
@@ -274,6 +303,9 @@ export function AttendeeList() {
             placeholder="Buscar participante..."
             onChange={onSearchInputChanged}
           />
+          {isSearching && (
+            <div className="ml-2 h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+          )}
         </div>
       </div>
 
@@ -312,7 +344,7 @@ export function AttendeeList() {
                 <TableDivisor variant>
                   <Container>
                     <Span>{attendee.name}</Span>
-                    <Span variant> {attendee.email}</Span>
+                    <Span variant>{attendee.email}</Span>
                   </Container>
                 </TableDivisor>
 
@@ -350,32 +382,39 @@ export function AttendeeList() {
         <tfoot>
           <tr>
             <TableDivisor className="text-sm text-gray-700" colSpan={3}>
-              Mostrando {attendees.length} de {pagination.total} itens{" "}
+              {(() => {
+                const startItem = (page - 1) * pagination.limit + 1;
+                const endItem = Math.min(
+                  page * pagination.limit,
+                  pagination.total
+                );
+                return `Mostrando ${startItem}-${endItem} de ${pagination.total} itens`;
+              })()}{" "}
               {selectedItems.size > 0 && `(${selectedItems.size} selecionados)`}
             </TableDivisor>
 
             <TableDivisor className="text-gray-700 text-right" colSpan={3}>
               <div className="inline-flex items-center gap-8">
                 <span>
-                  Página {page + 1} de {pagination.totalPages}
+                  Página {page} de {pagination.totalPages || 1}
                 </span>
 
                 <div className="flex gap-1.5">
-                  <IconButton onClick={goToFirstPage} disabled={page === 0}>
+                  <IconButton onClick={goToFirstPage} disabled={page === 1}>
                     <ChevronsLeft className="h-4 w-4 text-gray-900/30" />
                   </IconButton>
-                  <IconButton onClick={goToPreviousPage} disabled={page === 0}>
+                  <IconButton onClick={goToPreviousPage} disabled={page === 1}>
                     <ChevronLeft className="h-4 w-4 text-gray-900/30" />
                   </IconButton>
                   <IconButton
                     onClick={goToNextPage}
-                    disabled={page >= pagination.totalPages - 1}
+                    disabled={page >= (pagination.totalPages || 1)}
                   >
                     <ChevronRight className="h-4 w-4 text-gray-900/30" />
                   </IconButton>
                   <IconButton
                     onClick={goToLastPage}
-                    disabled={page >= pagination.totalPages - 1}
+                    disabled={page >= (pagination.totalPages || 1)}
                   >
                     <ChevronsRight className="h-4 w-4 text-gray-900/30" />
                   </IconButton>
